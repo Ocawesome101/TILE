@@ -93,20 +93,32 @@ local arrows -- these forward declarations will kill me someday
 local function insert_character(char)
   local buf = buffers[cbuf]
   if char == "\n" then
-    table.insert(buf.lines, buf.cline + 1, "")
+    local text = ""
+    if buf.cpos > 0 then
+      text = buf.lines[buf.cline]:sub(-buf.cpos)
+      buf.lines[buf.cline] = buf.lines[buf.cline]:sub(1,
+                                          #buf.lines[buf.cline] - buf.cpos)
+    end
+    table.insert(buf.lines, buf.cline + 1, text)
     arrows.down()
     return
   end
   local ln = buf.lines[buf.cline]
   if char == "\8" then
     if buf.cpos < #ln then
-      buf.lines[buf.cline] = ln:sub(0, #ln - buf.cpos - 1) .. ln:sub(#ln - buf.cpos + 1)
+      buf.lines[buf.cline] = ln:sub(0, #ln - buf.cpos - 1)
+                                                  .. ln:sub(#ln - buf.cpos + 1)
     elseif ln == "" then
       table.remove(buf.lines, buf.cline)
       arrows.up()
+    else
+      local line = table.remove(buf.lines, buf.cline)
+      arrows.up()
+      buf.lines[buf.cline] = buf.lines[buf.cline] .. line
     end
   else
-    buf.lines[buf.cline] = ln:sub(0, #ln - buf.cpos) .. char .. ln:sub(#ln - buf.cpos + 1)
+    buf.lines[buf.cline] = ln:sub(0, #ln - buf.cpos) .. char
+                                                  .. ln:sub(#ln - buf.cpos + 1)
   end
 end
 
@@ -114,26 +126,33 @@ local function trim_cpos()
   if buffers[cbuf].cpos > #buffers[cbuf].lines[buffers[cbuf].cline] then
     buffers[cbuf].cpos = #buffers[cbuf].lines[buffers[cbuf].cline]
   end
+  if buffers[cbuf].cpos < 0 then
+    buffers[cbuf].cpos = 0
+  end
 end
 
 arrows = {
   up = function()
     local buf = buffers[cbuf]
     if buf.cline > 1 then
+      local dfe = #(buf.lines[buf.cline] or "") - buf.cpos
       buf.cline = buf.cline - 1
       if buf.cline < buf.scroll and buf.scroll > 0 then
         buf.scroll = buf.scroll - 1
       end
+      buf.cpos = #buf.lines[buf.cline] - dfe
     end
     trim_cpos()
   end,
   down = function()
     local buf = buffers[cbuf]
     if buf.cline < #buf.lines then
+      local dfe = #(buf.lines[buf.cline] or "") - buf.cpos
       buf.cline = buf.cline + 1
       if buf.cline > buf.scroll + h - 3 then
         buf.scroll = buf.scroll + 1
       end
+      buf.cpos = #buf.lines[buf.cline] - dfe
     end
     trim_cpos()
   end,
@@ -141,12 +160,18 @@ arrows = {
     local buf = buffers[cbuf]
     if buf.cpos < #buf.lines[buf.cline] then
       buf.cpos = buf.cpos + 1
+    elseif buf.cline > 1 then
+      arrows.up()
+      buf.cpos = 0
     end
   end,
   right = function()
     local buf = buffers[cbuf]
     if buf.cpos > 0 then
       buf.cpos = buf.cpos - 1
+    elseif buf.cline < #buf.lines then
+      arrows.down()
+      buf.cpos = #buf.lines[buf.cline]
     end
   end,
   -- not strictly an arrow but w/e
