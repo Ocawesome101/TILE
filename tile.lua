@@ -13,6 +13,7 @@ local function load_file(file)
   local n = #buffers + 1
   buffers[n] = {name=file, cline = 1, cpos = 0, scroll = 1, lines = {}}
   local handle = io.open(file)
+  cbuf = n
   if not handle then
     buffers[n].lines[1] = ""
     return
@@ -21,7 +22,6 @@ local function load_file(file)
   for line in io.lines(file) do
     buffers[n].lines[#buffers[n].lines + 1] = (line:gsub("\n", ""))
   end
-  cbuf = n
 end
 
 if args[1] == "--help" then
@@ -67,6 +67,7 @@ end
 
 local function draw_buffer(num)
   w, h = vt.get_term_size()
+  io.write("\27[39;49m")
   draw_open_buffers(num)
   local top_line = buffers[num].scroll
   for i=1, h - 2, 1 do
@@ -182,7 +183,7 @@ local function prompt(text)
       inbuf = inbuf .. c
     end
   until (c == "m" and (f or {}).ctrl)
-  io.write("\27[37;47m")
+  io.write("\27[39;49m")
   return inbuf
 end
 
@@ -196,6 +197,25 @@ commands = {
   v = function()
     if cbuf > 1 then
       cbuf = cbuf - 1
+    end
+  end,
+  f = function()
+    local search_pattern = prompt("Search pattern:")
+    -- TODO: implement successive searching
+    for i = 1, #buffers[cbuf].lines, 1 do
+      if buffers[cbuf].lines[i]:match(search_pattern) then
+        buffers[cbuf].cline = i
+        buffers[cbuf].scroll = i - math.min(i, h // 2)
+        break
+      end
+    end
+  end,
+  r = function()
+    local search_pattern = prompt("Search pattern:")
+    local replace_pattern = prompt("Replace with?")
+    for i = 1, #buffers[cbuf].lines, 1 do
+      buffers[cbuf].lines[i] = buffers[cbuf].lines[i]:gsub(search_pattern,
+                                                                replace_pattern)
     end
   end,
   m = function() -- this is how we insert a newline - ^M == "\n"
@@ -223,6 +243,7 @@ commands = {
       return
     end
     table.remove(buffers, cbuf)
+    cbuf = math.min(cbuf, #buffers)
     if #buffers == 0 then
       commands.q()
     end
@@ -235,6 +256,7 @@ commands = {
       end
     end
     io.write("\27[2J\27[1;1H")
+    os.execute("stty sane")
     os.exit()
   end
 }
@@ -257,5 +279,3 @@ while true do
     insert_character(key)
   end
 end
-
-os.execute("stty sane")

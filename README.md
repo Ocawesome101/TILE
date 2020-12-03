@@ -15,6 +15,6 @@ Commands:
  - `^S`: save current buffer
  - `^W`: close current buffer
  - `^Q`: close editor
- - `^F`: find
+ - `^F`: find by Lua pattern
  - `^R`: find and replace by Lua pattern
  - `^G`: go to line
