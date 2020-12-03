@@ -95,6 +95,7 @@ local cbuf = 1
 local w, h = 1, 1
 local buffers = {}
 
+local commands -- forward declaration so commands and load_file can access this
 local function load_file(file)
   local n = #buffers + 1
   buffers[n] = {name=file, cline = 1, cpos = 0, scroll = 1, lines = {}}
@@ -108,6 +109,7 @@ local function load_file(file)
   for line in io.lines(file) do
     buffers[n].lines[#buffers[n].lines + 1] = (line:gsub("\n", ""))
   end
+  if commands and commands.h then commands.h() end
 end
 
 if args[1] == "--help" then
@@ -320,7 +322,6 @@ local function prompt(text)
   return inbuf
 end
 
-local commands -- forward declaration so commands can access this table
 commands = {
   b = function()
     if cbuf < #buffers then
@@ -402,6 +403,7 @@ commands = {
   end
 }
 
+commands.h()
 os.execute("stty raw -echo")
 
 while true do

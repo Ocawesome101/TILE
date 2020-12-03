@@ -59,6 +59,7 @@ do
 end
 
 local kchars = "[%{%}%[%]%(%)]"
+local operators = ""
 
 local function words(ln)
   local words = {}
