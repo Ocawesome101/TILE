@@ -62,11 +62,14 @@ local function draw_line(line_num, line_text)
   local write
   if line_text then
     line_text = line_text:gsub("\t", " ")
+    if #line_text > (w - 4) then
+      line_text = line_text:sub(1, w - 5)
+    end
     if buffers[cbuf].highlighter then
       line_text = buffers[cbuf].highlighter(line_text)
     end
     write = string.format("\27[2K\27[36m%4d\27[37m %s", line_num,
-                                   line_text)--(line_text:sub(1, #line_text - w - 4)))
+                                   line_text)
   else
     write = "\27[2K\27[96m~\27[37m"
   end
