@@ -1,93 +1,8 @@
 #!/usr/bin/env lua
--- TILE - the Terminal-Interface Lua Editor --
+-- TLE - The Lua Editor --
 
--- basic terminal interface library --
-
-local vt = {}
-
-function vt.set_cursor(x, y)
-  io.write(string.format("\27[%d;%dH", y, x))
-end
-
-function vt.get_cursor()
-  --os.execute("stty raw -echo")
-  io.write("\27[6n")
-  local resp = ""
-  repeat
-    local c = io.read(1)
-    resp = resp .. c
-  until c == "R"
-  local y, x = resp:match("\27%[(%d+);(%d+)R")
-  --os.execute("stty sane")
-  return tonumber(x), tonumber(y)
-end
-
-function vt.get_term_size()
-  local cx, cy = vt.get_cursor()
-  vt.set_cursor(9999, 9999)
-  local w, h = vt.get_cursor()
-  vt.set_cursor(cx, cy)
-  return w, h
-end
--- keyboard interface with standard VT100 terminals --
-
-local kbd = {}
-
-local patterns = {
-  ["1;7."] = {ctrl = true, alt = true},
-  ["1;5."] = {ctrl = true},
-  ["1;3."] = {alt = true}
-}
-
-local substitutions = {
-  A = "up",
-  B = "down",
-  C = "right",
-  D = "left"
-}
-
--- this is a neat party trick.  works for all alphabetical characters.
-local function get_char(ascii)
-  return string.char(96 + ascii:byte())
-end
-
-function kbd.get_key()
---  os.execute("stty raw -echo")
-  local data = io.read(1)
-  local key, flags
-  if data == "\27" then
-    local intermediate = io.read(1)
-    if intermediate == "[" then
-      data = ""
-      repeat
-        local c = io.read(1)
-        data = data .. c
-        if c:match("[a-zA-Z]") then
-          key = c
-        end
-      until c:match("[a-zA-Z]")
-      flags = {}
-      for pat, keys in pairs(patterns) do
-        if data:match(pat) then
-          flags = keys
-        end
-      end
-      key = substitutions[key] or "unknown"
-    else
-      key = io.read(1)
-      flags = {alt = true}
-    end
-  elseif data:byte() > 31 and data:byte() < 127 then
-    key = data
-  elseif data:byte() == 127 then
-    key = "backspace"
-  else
-    key = get_char(data)
-    flags = {ctrl = true}
-  end
-  --os.execute("stty sane")
-  return key, flags
-end
+local vt = require("term/iface")
+local kbd = require("term/kbd")
 
 local args = {...}
 
@@ -113,7 +28,7 @@ local function load_file(file)
 end
 
 if args[1] == "--help" then
-  print("usage: tile [FILE]")
+  print("usage: tle [FILE]")
   os.exit()
 elseif args[1] then
   load_file(args[1])
@@ -145,6 +60,7 @@ end
 local function draw_line(line_num, line_text)
   local write
   if line_text then
+    line_text = line_text:gsub("\t", " ")
     if buffers[cbuf].highlighter then
       line_text = buffers[cbuf].highlighter(line_text)
     end
@@ -200,9 +116,11 @@ local function insert_character(char)
       buf.lines[buf.cline] = ln:sub(0, #ln - buf.cpos - 1)
                                                   .. ln:sub(#ln - buf.cpos + 1)
     elseif ln == "" then
-      table.remove(buf.lines, buf.cline)
-      arrows.up()
-    else
+      if buf.cline > 1 then
+        table.remove(buf.lines, buf.cline)
+        arrows.up()
+      end
+    elseif buf.cline > 1 then
       local line = table.remove(buf.lines, buf.cline)
       arrows.up()
       buf.lines[buf.cline] = buf.lines[buf.cline] .. line
@@ -227,8 +145,8 @@ local function try_get_highlighter()
   if not ext then
     return
   end
-  local try = "/usr/share/TILE/"..ext..".lua"
-  local also_try = os.getenv("HOME").."/.local/share/TILE/"..ext..".lua"
+  local try = "/usr/share/TLE/"..ext..".lua"
+  local also_try = os.getenv("HOME").."/.local/share/TLE/"..ext..".lua"
   local ok, ret = pcall(dofile, also_try)
   if ok then
     return ret
