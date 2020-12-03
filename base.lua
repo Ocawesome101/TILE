@@ -36,19 +36,20 @@ else
   buffers[1] = {name="<new>", cline = 1, cpos = 0, scroll = 0, lines = {""}}
 end
 
-local function truncate_name(n)
+local function truncate_name(n, bn)
   if #n > 16 then
-    return "..." .. (n:sub(-13))
+    n = "..." .. (n:sub(-13))
   end
+  if buffers[bn].unsaved then n = n .. "*" end
   return n
 end
 
 -- TODO: may not draw correctly on small terminals or with long buffer names
-local function draw_open_buffers(max_width, current)
+local function draw_open_buffers(current)
   vt.set_cursor(1, 1)
   local draw = "\27[2K"
   for i=1, #buffers, 1 do
-    draw = draw .. "\27[36m| \27["..(i == current and 97 or 37).."m" .. truncate_name(buffers[i].name) .. " "
+    draw = draw .. "\27[36m| \27["..(i == current and 97 or 37).."m" .. truncate_name(buffers[i].name, current) .. " "
   end
   draw = draw .. "\27[36m|\27[37m"
   if #draw > w then
@@ -99,6 +100,7 @@ end
 local arrows -- these forward declarations will kill me someday
 local function insert_character(char)
   local buf = buffers[cbuf]
+  buf.unsaved = true
   if char == "\n" then
     local text = ""
     if buf.cpos > 0 then
@@ -295,6 +297,7 @@ commands = {
       ok:write(buffers[cbuf].lines[i], "\n")
     end
     ok:close()
+    buffers[cbuf].unsaved = false
   end,
   w = function()
     -- the user may have unsaved work, prompt
