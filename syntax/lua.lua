@@ -32,7 +32,8 @@ local keywords = {
   ['then']     = true,
   ['end']      = true,
   ['function'] = true,
-  ['return']   = true
+  ['return']   = true,
+  ['goto']     = true,
 }
 
 local functions = {
@@ -100,6 +101,8 @@ local function highlight(line)
       ret = ret .. cmt_color .. word
     elseif in_cmt then
       ret = ret .. word
+    elseif word:match("::.+::") then
+      ret = ret .. const_color .. word .. "\27[39m"
     else
       local esc = (keywords[word] and keyword_color) or
                   (functions[word] and builtin_color) or
