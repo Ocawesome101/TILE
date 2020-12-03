@@ -106,6 +106,11 @@ local function insert_character(char)
   buf.unsaved = true
   if char == "\n" then
     local text = ""
+    if buf.cline > 1 then -- attempt to get indentation of previous line
+      local prev = buf.lines[buf.cline]
+      local indent = #prev - #(prev:gsub("^[%s]+", ""))
+      text = (" "):rep(indent)
+    end
     if buf.cpos > 0 then
       text = buf.lines[buf.cline]:sub(-buf.cpos)
       buf.lines[buf.cline] = buf.lines[buf.cline]:sub(1,
@@ -156,6 +161,7 @@ local function try_get_highlighter()
   if ok then
     return ret
   else
+    io.stderr:write(ret)
     ok, ret = pcall(dofile, try)
     if ok then
       return ret
