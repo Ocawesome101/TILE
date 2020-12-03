@@ -88,7 +88,6 @@ function kbd.get_key()
   --os.execute("stty sane")
   return key, flags
 end
-local kbd = require("term/kbd")
 
 local args = {...}
 
