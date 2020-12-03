@@ -31,7 +31,8 @@ local keywords = {
   ['not']      = true,
   ['then']     = true,
   ['end']      = true,
-  ['function'] = true
+  ['function'] = true,
+  ['return']   = true
 }
 
 local functions = {
