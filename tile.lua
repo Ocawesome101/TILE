@@ -94,7 +94,7 @@ local function insert_character(char)
   local buf = buffers[cbuf]
   if char == "\n" then
     table.insert(buf.lines, buf.cline + 1, "")
-    buf.cline = buf.cline + 1
+    arrows.down()
     return
   end
   local ln = buf.lines[buf.cline]
@@ -204,11 +204,16 @@ commands = {
     -- TODO: implement successive searching
     for i = 1, #buffers[cbuf].lines, 1 do
       if buffers[cbuf].lines[i]:match(search_pattern) then
-        buffers[cbuf].cline = i
-        buffers[cbuf].scroll = i - math.min(i, h // 2)
+        commands.g(i)
         break
       end
     end
+  end,
+  g = function(i)
+    i = i or tonumber(prompt("Goto line:"))
+    i = math.min(i, #buffers[cbuf].lines)
+    buffers[cbuf].cline = i
+    buffers[cbuf].scroll = i - math.min(i, h // 2)
   end,
   r = function()
     local search_pattern = prompt("Search pattern:")
