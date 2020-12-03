@@ -3,58 +3,259 @@
 local vt = require("tile/term_iface")
 local kbd = require("tile/term_kbd")
 
-local buffers = {{name = "<new>", lines = {"This is a test :)", "A test of my editor!"}}}
+local args = {...}
+
+local cbuf = 1
+local w, h = 1, 1
+local buffers = {}
+
+local function load_file(file)
+  local n = #buffers + 1
+  buffers[n] = {name=file, cline = 1, cpos = 0, scroll = 1, lines = {}}
+  local handle = io.open(file)
+  if not handle then
+    buffers[n].lines[1] = ""
+    return
+  end
+  handle:close()
+  for line in io.lines(file) do
+    buffers[n].lines[#buffers[n].lines + 1] = (line:gsub("\n", ""))
+  end
+  cbuf = n
+end
+
+if args[1] == "--help" then
+  print("usage: tile [FILE]")
+  os.exit()
+elseif args[1] then
+  load_file(args[1])
+else
+  buffers[1] = {name="<new>", cline = 1, cpos = 0, scroll = 0, lines = {""}}
+end
+
+local function truncate_name(n)
+  if #n > 16 then
+    return "..." .. (n:sub(-13))
+  end
+  return n
+end
 
 -- TODO: may not draw correctly on small terminals or with long buffer names
 local function draw_open_buffers(max_width, current)
   vt.set_cursor(1, 1)
-  local total = 0
-  local max_buffer = 0
+  local draw = "\27[2K"
   for i=1, #buffers, 1 do
-    total = total + #buffers[i].name + 4
-    if total > max_width then
-      max_buffer = i - 1
-    end
+    draw = draw .. "\27[36m| \27["..(i == current and 97 or 37).."m" .. truncate_name(buffers[i].name) .. " "
   end
-  max_buffer = math.max(1, max_buffer)
-  local draw = ""
-  for i=1, max_buffer, 1 do
-    draw = draw .. "\27[36m| \27["..(i == current and 97 or 37).."m" .. buffers[i].name
+  draw = draw .. "\27[36m|\27[37m"
+  if #draw > w then
+    draw = draw:sub(1, -(#(draw:gsub("\27%[%d+m", "")) - w))
   end
-  draw = draw .. " \27[36m|\27[37m"
-  io.write(draw, "\n", string.rep("-", max_width))
+  io.write(draw, "\n\27[G\27[2K\27[36m", string.rep("-", w))
 end
 
-local function draw_line(line_num, line_text, max_width)
+local function draw_line(line_num, line_text, line_scroll)
   local write
   if line_text then
-    write = string.format("\27[36m%4d\27[37m %s", line_num,
-                                   (line_text:sub(#line_text - max_width - 4)))
+    write = string.format("\27[2K\27[36m%4d\27[37m %s", line_num,
+                                   line_text)--(line_text:sub(1, #line_text - w - 4)))
   else
-    write = "\27[96m~\27[37m"
+    write = "\27[2K\27[96m~\27[37m"
   end
   io.write(write)
 end
 
-local function draw_buffer(num, top_line)
-  local w, h = vt.get_term_size()
-  io.write("\27[2J")
-  draw_open_buffers(w, num)
+local function draw_buffer(num)
+  w, h = vt.get_term_size()
+  draw_open_buffers(num)
+  local top_line = buffers[num].scroll
   for i=1, h - 2, 1 do
     vt.set_cursor(1, i + 2)
-    draw_line(top_line + i - 1, buffers[num].lines[top_line + i - 1], w)
+    draw_line(top_line + i - 1, buffers[num].lines[top_line + i - 1])
   end
 end
 
-draw_buffer(1, 1)
+local function update_cursor()
+  local buf = buffers[cbuf]
+  local mw = w - 5
+  local cx = (#buf.lines[buf.cline] - buf.cpos) + 6
+  local cy = buf.cline - buf.scroll + 3
+  if cx > mw then
+    vt.set_cursor(1, buf.cline - buf.scroll + 3)
+    draw_line(buf.cline, (buf.lines[buf.cline]:sub(cx - mw + 1, cx)))
+    cx = mw
+  end
+  vt.set_cursor(cx, cy)
+end
 
+local arrows -- these forward declarations will kill me someday
+local function insert_character(char)
+  local buf = buffers[cbuf]
+  if char == "\n" then
+    table.insert(buf.lines, buf.cline + 1, "")
+    buf.cline = buf.cline + 1
+    return
+  end
+  local ln = buf.lines[buf.cline]
+  if char == "\8" then
+    if buf.cpos < #ln then
+      buf.lines[buf.cline] = ln:sub(0, #ln - buf.cpos - 1) .. ln:sub(#ln - buf.cpos + 1)
+    elseif ln == "" then
+      table.remove(buf.lines, buf.cline)
+      arrows.up()
+    end
+  else
+    buf.lines[buf.cline] = ln:sub(0, #ln - buf.cpos) .. char .. ln:sub(#ln - buf.cpos + 1)
+  end
+end
 
-while true do
-  draw_buffer(1,1)
-  local key, flags = kbd.get_key()
-  flags = flags or {}
-  if key == "w" and flags.ctrl then
-    io.write("\27[2J")
+local function trim_cpos()
+  if buffers[cbuf].cpos > #buffers[cbuf].lines[buffers[cbuf].cline] then
+    buffers[cbuf].cpos = #buffers[cbuf].lines[buffers[cbuf].cline]
+  end
+end
+
+arrows = {
+  up = function()
+    local buf = buffers[cbuf]
+    if buf.cline > 1 then
+      buf.cline = buf.cline - 1
+      if buf.cline < buf.scroll and buf.scroll > 0 then
+        buf.scroll = buf.scroll - 1
+      end
+    end
+    trim_cpos()
+  end,
+  down = function()
+    local buf = buffers[cbuf]
+    if buf.cline < #buf.lines then
+      buf.cline = buf.cline + 1
+      if buf.cline > buf.scroll + h - 3 then
+        buf.scroll = buf.scroll + 1
+      end
+    end
+    trim_cpos()
+  end,
+  left = function()
+    local buf = buffers[cbuf]
+    if buf.cpos < #buf.lines[buf.cline] then
+      buf.cpos = buf.cpos + 1
+    end
+  end,
+  right = function()
+    local buf = buffers[cbuf]
+    if buf.cpos > 0 then
+      buf.cpos = buf.cpos - 1
+    end
+  end,
+  -- not strictly an arrow but w/e
+  backspace = function()
+    insert_character("\8")
+  end
+}
+
+-- TODO: clean up this function
+local function prompt(text)
+  -- box is max(#text, 18)x3
+  local box_w = math.max(#text, 18)
+  local box_x, box_y = w//2 - (box_w//2), h//2 - 1
+  vt.set_cursor(box_x, box_y)
+  io.write("\27[46m", string.rep(" ", box_w))
+  vt.set_cursor(box_x, box_y)
+  io.write("\27[30;46m", text)
+  local inbuf = ""
+  local function redraw()
+    vt.set_cursor(box_x, box_y + 1)
+    io.write("\27[46m", string.rep(" ", box_w))
+    vt.set_cursor(box_x + 1, box_y + 1)
+    io.write("\27[36;40m", inbuf:sub(-(box_w - 2)), string.rep(" ",
+                                                          (box_w - 2) - #inbuf))
+    vt.set_cursor(box_x, box_y + 2)
+    io.write("\27[46m", string.rep(" ", box_w))
+  end
+  repeat
+    redraw()
+    local c, f = kbd.get_key()
+    if c == "backspace" then
+      inbuf = inbuf:sub(1, -2)
+    elseif not f then
+      inbuf = inbuf .. c
+    end
+  until (c == "m" and (f or {}).ctrl)
+  io.write("\27[37;47m")
+  return inbuf
+end
+
+local commands -- forward declaration so commands can access this table
+commands = {
+  b = function()
+    if cbuf < #buffers then
+      cbuf = cbuf + 1
+    end
+  end,
+  v = function()
+    if cbuf > 1 then
+      cbuf = cbuf - 1
+    end
+  end,
+  m = function() -- this is how we insert a newline - ^M == "\n"
+    insert_character("\n")
+  end,
+  n = function()
+    local file_to_open = prompt("Enter file path:")
+    load_file(file_to_open)
+  end,
+  s = function()
+    local ok, err = io.open(buffers[cbuf].name, "w")
+    if not ok then
+      prompt(err)
+      return
+    end
+    for i=1, #buffers[cbuf].lines, 1 do
+      ok:write(buffers[cbuf].lines[i], "\n")
+    end
+    ok:close()
+  end,
+  w = function()
+    -- the user may have unsaved work, prompt
+    local really = prompt("REALLY close buffer? [y/N] ")
+    if really ~= "y" then
+      return
+    end
+    table.remove(buffers, cbuf)
+    if #buffers == 0 then
+      commands.q()
+    end
+  end,
+  q = function()
+    if #buffers > 0 then -- the user may have unsaved work, prompt
+      local really = prompt("Really quit TILE? [y/N] ")
+      if really ~= "y" then
+        return
+      end
+    end
+    io.write("\27[2J\27[1;1H")
     os.exit()
   end
+}
+
+os.execute("stty raw -echo")
+
+while true do
+  draw_buffer(cbuf)
+  update_cursor()
+  local key, flags = kbd.get_key()
+  flags = flags or {}
+  if flags.ctrl then
+    if commands[key] then
+      commands[key]()
+    end
+  elseif flags.alt then
+  elseif arrows[key] then
+    arrows[key]()
+  elseif #key == 1 then
+    insert_character(key)
+  end
 end
+
+os.execute("stty sane")

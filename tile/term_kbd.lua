@@ -8,13 +8,20 @@ local patterns = {
   ["1;3."] = {alt = true}
 }
 
+local substitutions = {
+  A = "up",
+  B = "down",
+  C = "right",
+  D = "left"
+}
+
 -- this is a neat party trick.  works for all alphabetical characters.
 local function get_char(ascii)
   return string.char(96 + ascii:byte())
 end
 
 function lib.get_key()
-  os.execute("stty raw -echo")
+--  os.execute("stty raw -echo")
   local data = io.read(1)
   local key, flags
   if data == "\27" then
@@ -41,11 +48,13 @@ function lib.get_key()
     end
   elseif data:byte() > 31 and data:byte() < 127 then
     key = data
+  elseif data:byte() == 127 then
+    key = "backspace"
   else
     key = get_char(data)
     flags = {ctrl = true}
   end
-  os.execute("stty sane")
+  --os.execute("stty sane")
   return key, flags
 end
 
