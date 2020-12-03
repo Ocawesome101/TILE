@@ -10,6 +10,7 @@ local cbuf = 1
 local w, h = 1, 1
 local buffers = {}
 
+local commands -- forward declaration so commands and load_file can access this
 local function load_file(file)
   local n = #buffers + 1
   buffers[n] = {name=file, cline = 1, cpos = 0, scroll = 1, lines = {}}
@@ -23,6 +24,7 @@ local function load_file(file)
   for line in io.lines(file) do
     buffers[n].lines[#buffers[n].lines + 1] = (line:gsub("\n", ""))
   end
+  if commands and commands.h then commands.h() end
 end
 
 if args[1] == "--help" then
@@ -55,9 +57,12 @@ local function draw_open_buffers(max_width, current)
   io.write(draw, "\n\27[G\27[2K\27[36m", string.rep("-", w))
 end
 
-local function draw_line(line_num, line_text, line_scroll)
+local function draw_line(line_num, line_text)
   local write
   if line_text then
+    if buffers[cbuf].highlighter then
+      line_text = buffers[cbuf].highlighter(line_text)
+    end
     write = string.format("\27[2K\27[36m%4d\27[37m %s", line_num,
                                    line_text)--(line_text:sub(1, #line_text - w - 4)))
   else
@@ -130,6 +135,25 @@ local function trim_cpos()
   if buffers[cbuf].cpos < 0 then
     buffers[cbuf].cpos = 0
   end
+end
+
+local function try_get_highlighter()
+  local ext = buffers[cbuf].name:match("%.(.-)$")
+  if not ext then
+    return
+  end
+  local try = "/usr/share/TILE/"..ext..".lua"
+  local also_try = os.getenv("HOME").."/.local/share/TILE/"..ext..".lua"
+  local ok, ret = pcall(dofile, also_try)
+  if ok then
+    return ret
+  else
+    ok, ret = pcall(dofile, try)
+    if ok then
+      return ret
+    end
+  end
+  return nil
 end
 
 arrows = {
@@ -213,7 +237,6 @@ local function prompt(text)
   return inbuf
 end
 
-local commands -- forward declaration so commands can access this table
 commands = {
   b = function()
     if cbuf < #buffers then
@@ -248,6 +271,9 @@ commands = {
       buffers[cbuf].lines[i] = buffers[cbuf].lines[i]:gsub(search_pattern,
                                                                 replace_pattern)
     end
+  end,
+  h = function()
+    buffers[cbuf].highlighter = try_get_highlighter()
   end,
   m = function() -- this is how we insert a newline - ^M == "\n"
     insert_character("\n")
@@ -292,6 +318,7 @@ commands = {
   end
 }
 
+commands.h()
 os.execute("stty raw -echo")
 
 while true do

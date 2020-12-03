@@ -6,6 +6,8 @@ Somewhat similar to `nano`, but written in Lua and with different commands.  Wil
 
 Use arrow keys to navigate.
 
+Run `standalone.sh` to generate a standalone TILE script.  Copy `syntax` to `$HOME/.local/share/TILE` to get syntax highlighting.
+
 Commands:
 
  - `alt-H`: toggle syntax highlighting
