@@ -1,12 +1,12 @@
 -- basic terminal interface library --
 
-local lib = {}
+local vt = {}
 
-function lib.set_cursor(x, y)
+function vt.set_cursor(x, y)
   io.write(string.format("\27[%d;%dH", y, x))
 end
 
-function lib.get_cursor()
+function vt.get_cursor()
   --os.execute("stty raw -echo")
   io.write("\27[6n")
   local resp = ""
@@ -19,12 +19,12 @@ function lib.get_cursor()
   return tonumber(x), tonumber(y)
 end
 
-function lib.get_term_size()
-  local cx, cy = lib.get_cursor()
-  lib.set_cursor(9999, 9999)
-  local w, h = lib.get_cursor()
-  lib.set_cursor(cx, cy)
+function vt.get_term_size()
+  local cx, cy = vt.get_cursor()
+  vt.set_cursor(9999, 9999)
+  local w, h = vt.get_cursor()
+  vt.set_cursor(cx, cy)
   return w, h
 end
 
-return lib
+return vt

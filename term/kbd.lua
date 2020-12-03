@@ -1,6 +1,6 @@
 -- keyboard interface with standard VT100 terminals --
 
-local lib = {}
+local kbd = {}
 
 local patterns = {
   ["1;7."] = {ctrl = true, alt = true},
@@ -20,7 +20,7 @@ local function get_char(ascii)
   return string.char(96 + ascii:byte())
 end
 
-function lib.get_key()
+function kbd.get_key()
 --  os.execute("stty raw -echo")
   local data = io.read(1)
   local key, flags
@@ -58,4 +58,4 @@ function lib.get_key()
   return key, flags
 end
 
-return lib
+return kbd
