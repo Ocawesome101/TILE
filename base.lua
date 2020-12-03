@@ -293,6 +293,9 @@ commands = {
       end
       buffers[cbuf].cpos = 0
       buffers[cbuf].unsaved = true
+      if buffers[cbuf].cline > #buffers[cbuf].lines then
+        buffers[cbuf].cline = #buffers[cbuf].lines
+      end
     end
   end,
   r = function()
