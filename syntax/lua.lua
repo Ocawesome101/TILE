@@ -86,7 +86,7 @@ local function highlight(line)
   local in_str = false
   local in_cmt = false
   for i, word in ipairs(words(line)) do
-    if word:match("[\"']") and not in_str then
+    if word:match("[\"']") and not in_str and not in_cmt then
       in_str = true
       ret = ret .. str_color .. word
     elseif in_str then

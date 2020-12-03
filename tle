@@ -399,9 +399,18 @@ commands = {
   end,
   w = function()
     -- the user may have unsaved work, prompt
-    local really = prompt("REALLY close buffer? [y/N] ")
-    if really ~= "y" then
-      return
+    local unsaved
+    for i=1, #buffers, 1 do
+      if buffers[i].unsaved then
+        unsaved = true
+       break
+      end
+    end
+    if unsaved then
+      local really = prompt("Delete unsaved work? [y/N] ")
+      if really ~= "y" then
+        return
+      end
     end
     table.remove(buffers, cbuf)
     cbuf = math.min(cbuf, #buffers)
@@ -411,9 +420,18 @@ commands = {
   end,
   q = function()
     if #buffers > 0 then -- the user may have unsaved work, prompt
-      local really = prompt("Really quit TILE? [y/N] ")
-      if really ~= "y" then
-        return
+      local unsaved
+      for i=1, #buffers, 1 do
+        if buffers[i].unsaved then
+          unsaved = true
+          break
+        end
+      end
+      if unsaved then
+        local really = prompt("Delete unsaved work? [y/N] ")
+        if really ~= "y" then
+          return
+        end
       end
     end
     io.write("\27[2J\27[1;1H")
