@@ -118,6 +118,7 @@ local function insert_character(char)
     end
     table.insert(buf.lines, buf.cline + 1, text)
     arrows.down()
+    buf.cpos = #buf.lines[buf.cline]
     return
   end
   local ln = buf.lines[buf.cline]
@@ -129,10 +130,13 @@ local function insert_character(char)
       if buf.cline > 1 then
         table.remove(buf.lines, buf.cline)
         arrows.up()
+        buf.cpos = 0
       end
     elseif buf.cline > 1 then
       local line = table.remove(buf.lines, buf.cline)
+      local old_cpos = buf.cpos
       arrows.up()
+      buf.cpos = old_cpos
       buf.lines[buf.cline] = buf.lines[buf.cline] .. line
     end
   else
