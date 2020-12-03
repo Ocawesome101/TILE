@@ -130,11 +130,11 @@ local function truncate_name(n, bn)
 end
 
 -- TODO: may not draw correctly on small terminals or with long buffer names
-local function draw_open_buffers(current)
+local function draw_open_buffers()
   vt.set_cursor(1, 1)
   local draw = "\27[2K"
   for i=1, #buffers, 1 do
-    draw = draw .. "\27[36m| \27["..(i == current and 97 or 37).."m" .. truncate_name(buffers[i].name, current) .. " "
+    draw = draw .. "\27[36m| \27["..(i == cbuf and 97 or 37).."m" .. truncate_name(buffers[i].name, i) .. " "
   end
   draw = draw .. "\27[36m|\27[37m"
   if #draw > w then
@@ -161,14 +161,14 @@ local function draw_line(line_num, line_text)
   io.write(write)
 end
 
-local function draw_buffer(num)
+local function draw_buffer()
   w, h = vt.get_term_size()
   io.write("\27[39;49m")
-  draw_open_buffers(num)
-  local top_line = buffers[num].scroll
+  draw_open_buffers()
+  local top_line = buffers[cbuf].scroll
   for i=1, h - 2, 1 do
     vt.set_cursor(1, i + 2)
-    draw_line(top_line + i - 1, buffers[num].lines[top_line + i - 1])
+    draw_line(top_line + i - 1, buffers[cbuf].lines[top_line + i - 1])
   end
 end
 
@@ -367,6 +367,19 @@ commands = {
     buffers[cbuf].cline = i
     buffers[cbuf].scroll = i - math.min(i, h // 2)
   end,
+  k = function()
+    local del = prompt("# of lines to delete:")
+    del = tonumber(del)
+    if del and del > 0 then
+      for i=1, del, 1 do
+        local ln = buffers[cbuf].cline
+        if ln > #buffers[cbuf].lines then return end
+        table.remove(buffers[cbuf].lines, ln)
+      end
+      buffers[cbuf].cpos = 0
+      buffers[cbuf].unsaved = true
+    end
+  end,
   r = function()
     local search_pattern = prompt("Search pattern:")
     local replace_pattern = prompt("Replace with?")
@@ -444,7 +457,7 @@ commands.h()
 os.execute("stty raw -echo")
 
 while true do
-  draw_buffer(cbuf)
+  draw_buffer()
   update_cursor()
   local key, flags = kbd.get_key()
   flags = flags or {}

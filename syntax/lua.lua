@@ -66,7 +66,7 @@ local function words(ln)
   local words = {}
   local ws, word = "", ""
   for char in ln:gmatch(".") do
-    if char:match("[%{%}%[%]%(%)%s\"',]") then
+    if char:match("[%{%}%[%]%(%)%s\"',%+%=%%%/%|%&%>%<%*]") then
       ws = char
       if #word > 0 then words[#words + 1] = word  end
       if #ws > 0 then words[#words + 1] = ws  end
