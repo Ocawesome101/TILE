@@ -191,19 +191,20 @@ local function insert_character(char)
   buf.unsaved = true
   if char == "\n" then
     local text = ""
+    local old_cpos = buf.cpos
     if buf.cline > 1 then -- attempt to get indentation of previous line
       local prev = buf.lines[buf.cline]
       local indent = #prev - #(prev:gsub("^[%s]+", ""))
       text = (" "):rep(indent)
     end
     if buf.cpos > 0 then
-      text = buf.lines[buf.cline]:sub(-buf.cpos)
+      text = text .. buf.lines[buf.cline]:sub(-buf.cpos)
       buf.lines[buf.cline] = buf.lines[buf.cline]:sub(1,
                                           #buf.lines[buf.cline] - buf.cpos)
     end
     table.insert(buf.lines, buf.cline + 1, text)
     arrows.down()
-    buf.cpos = #buf.lines[buf.cline]
+    buf.cpos = old_cpos
     return
   end
   local ln = buf.lines[buf.cline]
