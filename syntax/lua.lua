@@ -34,6 +34,7 @@ local keywords = {
   ['function'] = true,
   ['return']   = true,
   ['goto']     = true,
+  ['break']    = true
 }
 
 local functions = {
