@@ -267,11 +267,13 @@ commands = {
   b = function()
     if cbuf < #buffers then
       cbuf = cbuf + 1
+      buffers[cbuf].cache = {}
     end
   end,
   v = function()
     if cbuf > 1 then
       cbuf = cbuf - 1
+      buffers[cbuf].cache = {}
     end
   end,
   f = function()
@@ -316,6 +318,7 @@ commands = {
   end,
   h = function()
     buffers[cbuf].highlighter = try_get_highlighter()
+    buffers[cbuf].cache = {}
   end,
   m = function() -- this is how we insert a newline - ^M == "\n"
     insert_character("\n")
