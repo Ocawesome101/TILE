@@ -98,7 +98,7 @@ local buffers = {}
 local commands -- forward declaration so commands and load_file can access this
 local function load_file(file)
   local n = #buffers + 1
-  buffers[n] = {name=file, cline = 1, cpos = 0, scroll = 1, lines = {}}
+  buffers[n] = {name=file, cline = 1, cpos = 0, scroll = 1, lines = {}, cache = {}}
   local handle = io.open(file)
   cbuf = n
   if not handle then
@@ -118,7 +118,7 @@ if args[1] == "--help" then
 elseif args[1] then
   load_file(args[1])
 else
-  buffers[1] = {name="<new>", cline = 1, cpos = 0, scroll = 0, lines = {""}}
+  buffers[1] = {name="<new>", cline = 1, cpos = 0, scroll = 0, lines = {""}, cache = {}}
 end
 
 local function truncate_name(n, bn)
@@ -138,7 +138,7 @@ local function draw_open_buffers()
   end
   draw = draw .. "\27[36m|\27[37m"
   if #draw > w then
-    draw = draw:sub(1, -(#(draw:gsub("\27%[%d+m", "")) - w))
+    draw = draw:sub(1, w)
   end
   io.write(draw, "\n\27[G\27[2K\27[36m", string.rep("-", w))
 end
@@ -165,10 +165,15 @@ local function draw_buffer()
   w, h = vt.get_term_size()
   io.write("\27[39;49m")
   draw_open_buffers()
-  local top_line = buffers[cbuf].scroll
+  local buffer = buffers[cbuf]
+  local top_line = buffer.scroll
   for i=1, h - 2, 1 do
-    vt.set_cursor(1, i + 2)
-    draw_line(top_line + i - 1, buffers[cbuf].lines[top_line + i - 1])
+    local line = top_line + i - 1
+    if buffer.cache[line] ~= buffer.lines[line] then
+      vt.set_cursor(1, i + 2)
+      draw_line(line, buffer.lines[line])
+      buffer.cache[line] = buffer.lines[line]
+    end
   end
 end
 
@@ -268,6 +273,7 @@ arrows = {
       buf.cline = buf.cline - 1
       if buf.cline < buf.scroll and buf.scroll > 0 then
         buf.scroll = buf.scroll - 1
+        buf.cache = {}
       end
       buf.cpos = #buf.lines[buf.cline] - dfe
     end
@@ -280,6 +286,7 @@ arrows = {
       buf.cline = buf.cline + 1
       if buf.cline > buf.scroll + h - 3 then
         buf.scroll = buf.scroll + 1
+        buf.cache = {}
       end
       buf.cpos = #buf.lines[buf.cline] - dfe
     end
