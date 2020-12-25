@@ -169,11 +169,13 @@ local function try_get_highlighter()
   local also_try = os.getenv("HOME").."/.local/share/TLE/"..ext..".lua"
   local ok, ret = pcall(dofile, also_try)
   if ok then
+    print("OK", also_try)
     return ret
   else
     io.stderr:write(ret)
     ok, ret = pcall(dofile, try)
     if ok then
+      print("OK", try)
       return ret
     end
   end
