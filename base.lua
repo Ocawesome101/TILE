@@ -260,6 +260,7 @@ local function prompt(text)
     end
   until (c == "m" and (f or {}).ctrl)
   io.write("\27[39;49m")
+  buffers[cbuf].cache = {}
   return inbuf
 end
 
