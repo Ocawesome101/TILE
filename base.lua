@@ -84,7 +84,7 @@ local function draw_buffer()
   local top_line = buffer.scroll
   for i=1, h - 2, 1 do
     local line = top_line + i - 1
-    if buffer.cache[line] ~= buffer.lines[line] then
+    if buffer.cache[line] ~= buffer.lines[line] or buffer.lines[line] == nil then
       vt.set_cursor(1, i + 2)
       draw_line(line, buffer.lines[line])
       buffer.cache[line] = buffer.lines[line]
@@ -376,13 +376,14 @@ commands = {
         end
       end
     end
-    io.write("\27[2J\27[1;1H")
+    io.write("\27[2J\27[1;1H\27[m")
     os.execute("stty sane")
     os.exit()
   end
 }
 
 commands.h()
+io.write("\27[2J")
 os.execute("stty raw -echo")
 
 while true do
