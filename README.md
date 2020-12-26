@@ -10,7 +10,7 @@ Run `standalone.sh` to generate a standalone TILE script.  Copy `syntax` to `$HO
 
 Commands:
 
- - `^H`: reload syntax highlighting
+ - `^T`: reload syntax highlighting
  - `^N`: open a file for editing
  - `^B`: go to next buffer
  - `^V`: go to previous buffer

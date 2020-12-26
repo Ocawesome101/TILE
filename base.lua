@@ -24,7 +24,7 @@ local function load_file(file)
   for line in io.lines(file) do
     buffers[n].lines[#buffers[n].lines + 1] = (line:gsub("\n", ""))
   end
-  if commands and commands.h then commands.h() end
+  if commands and commands.t then commands.t() end
 end
 
 if args[1] == "--help" then
@@ -319,7 +319,7 @@ commands = {
                                                                 replace_pattern)
     end
   end,
-  h = function()
+  t = function()
     buffers[cbuf].highlighter = try_get_highlighter()
     buffers[cbuf].cache = {}
   end,
@@ -385,7 +385,7 @@ commands = {
   end
 }
 
-commands.h()
+commands.t()
 io.write("\27[2J")
 os.execute("stty raw -echo")
 
