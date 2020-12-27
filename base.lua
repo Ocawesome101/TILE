@@ -47,15 +47,15 @@ end
 -- TODO: may not draw correctly on small terminals or with long buffer names
 local function draw_open_buffers()
   vt.set_cursor(1, 1)
-  local draw = "\27[2K"
+  local draw = "\27[2K\27[46m"
   for i=1, #buffers, 1 do
-    draw = draw .. "\27[36m| \27["..(i == cbuf and 97 or 37).."m" .. truncate_name(buffers[i].name, i) .. " "
+    draw = draw .. "\27[36m \27["..(i == cbuf and "107" or "46")..";30m " .. truncate_name(buffers[i].name, i) .. " \27[46m"
   end
-  draw = draw .. "\27[36m|\27[37m"
-  if #draw > w then
+  draw = draw .. "\27[K\27[39;49m"
+  if #draw:gsub("\27%[.+m", "") > w then
     draw = draw:sub(1, w)
   end
-  io.write(draw, "\n\27[G\27[2K\27[36m", string.rep("-", w))
+  io.write(draw)--, "\n\27[G\27[2K\27[36m", string.rep("-", w))
 end
 
 local function draw_line(line_num, line_text)
@@ -82,12 +82,13 @@ local function draw_buffer()
   draw_open_buffers()
   local buffer = buffers[cbuf]
   local top_line = buffer.scroll
-  for i=1, h - 2, 1 do
+  for i=1, h - 1, 1 do
     local line = top_line + i - 1
-    if buffer.cache[line] ~= buffer.lines[line] or buffer.lines[line] == nil then
-      vt.set_cursor(1, i + 2)
+    if (not buffer.cache[line]) or
+        (buffer.lines[line] and buffer.lines[line] ~= buffer.cache[line]) then
+      vt.set_cursor(1, i + 1)
       draw_line(line, buffer.lines[line])
-      buffer.cache[line] = buffer.lines[line]
+      buffer.cache[line] = buffer.lines[line] or "~"
     end
   end
 end
@@ -96,9 +97,9 @@ local function update_cursor()
   local buf = buffers[cbuf]
   local mw = w - 5
   local cx = (#buf.lines[buf.cline] - buf.cpos) + 6
-  local cy = buf.cline - buf.scroll + 3
+  local cy = buf.cline - buf.scroll + 2
   if cx > mw then
-    vt.set_cursor(1, buf.cline - buf.scroll + 3)
+    vt.set_cursor(1, cy)
     draw_line(buf.cline, (buf.lines[buf.cline]:sub(cx - mw + 1, cx)))
     cx = mw
   end
@@ -129,6 +130,10 @@ local function insert_character(char)
   end
   local ln = buf.lines[buf.cline]
   if char == "\8" then
+    buf.cache[buf.cline] = nil
+    buf.cache[buf.cline - 1] = nil
+    buf.cache[buf.cline + 1] = nil
+    buf.cache[#buf.lines] = nil
     if buf.cpos < #ln then
       buf.lines[buf.cline] = ln:sub(0, #ln - buf.cpos - 1)
                                                   .. ln:sub(#ln - buf.cpos + 1)
@@ -323,6 +328,9 @@ commands = {
     buffers[cbuf].highlighter = try_get_highlighter()
     buffers[cbuf].cache = {}
   end,
+  h = function()
+    insert_character("\8")
+  end,
   m = function() -- this is how we insert a newline - ^M == "\n"
     insert_character("\n")
   end,
@@ -362,6 +370,7 @@ commands = {
     if #buffers == 0 then
       commands.q()
     end
+    buffers[cbuf].cache = {}
   end,
   q = function()
     if #buffers > 0 then -- the user may have unsaved work, prompt
