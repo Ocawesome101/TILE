@@ -130,8 +130,14 @@ local function draw_line(line_num, line_text)
   io.write(write)
 end
 
+-- dynamically getting dimensions makes the experience slightly nicer for the
+-- 2%, at the cost of a rather significant performance drop on slower
+-- terminals.  hence, I have removed it.
+--
+-- to re-enable it, just move the below line inside the draw_buffer() function.
+-- you may want to un-comment it.
+-- w, h = vt.get_term_size()
 local function draw_buffer()
-  w, h = vt.get_term_size()
   io.write("\27[39;49m")
   draw_open_buffers()
   local buffer = buffers[cbuf]
@@ -447,14 +453,23 @@ commands = {
       end
     end
     io.write("\27[2J\27[1;1H\27[m")
-    os.execute("stty sane")
+    if os.getenv("TERM") == "paragon" then
+      io.write("\27(r\27(L")
+    else
+      os.execute("stty sane")
+    end
     os.exit()
   end
 }
 
 commands.t()
 io.write("\27[2J")
-os.execute("stty raw -echo")
+if os.getenv("TERM") == "paragon" then
+  io.write("\27(R\27(l")
+else
+  os.execute("stty raw -echo")
+end
+w, h = vt.get_term_size()
 
 while true do
   draw_buffer()
