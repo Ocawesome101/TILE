@@ -1,14 +1,64 @@
 #!/usr/bin/env lua
 -- TLE - The Lua Editor --
 
-local vt = require("term/iface")
-local kbd = require("term/kbd")
+local vt = require("lib/iface")
+local kbd = require("lib/kbd")
+require("lib/tlerc")
+local syntax = require("lib/syntax")
 
 local args = {...}
 
 local cbuf = 1
 local w, h = 1, 1
 local buffers = {}
+
+local function get_abs_path(file)
+  local pwd = os.getenv("PWD")
+  if file:sub(1,1) == "/" or not pwd then return file end
+  return string.format("%s/%s", pwd, file):gsub("[\\/]+", "/")
+end
+
+local function read_file(file)
+  local handle, err = io.open(file, "r")
+  if not handle then
+    return ""
+  end
+  local data = handle:read("a")
+  handle:close()
+  return data
+end
+
+local function write_file(file, data)
+  local handle, err = io.open(file, "w")
+  if not handle then return end
+  handle:write(data)
+  handle:close()
+end
+
+local function get_last_pos(file)
+  local abs = get_abs_path(file)
+  local pdata = read_file(os.getenv("HOME") .. "/.vle_positions")
+  local pat = abs:gsub("[%[%]%(%)%^%$%%%+%*%*]", "%%%1") .. ":(%d+)\n"
+  if pdata:match(pat) then
+    local n = tonumber(pdata:match(pat))
+    return n or 1
+  end
+  return 1
+end
+
+local function save_last_pos(file, n)
+  local abs = get_abs_path(file)
+  local escaped = abs:gsub("[%[%]%(%)%^%$%%%+%*%*]", "%%%1")
+  local pat = "(" .. escaped .. "):(%d+)\n"
+  local vp_path = os.getenv("HOME") .. "/.vle_positions"
+  local data = read_file(vp_path)
+  if data:match(pat) then
+    data = data:gsub(pat, string.format("%%1:%d\n", n))
+  else
+    data = data .. string.format("%s:%d\n", abs, n)
+  end
+  write_file(vp_path, data)
+end
 
 local commands -- forward declaration so commands and load_file can access this
 local function load_file(file)
@@ -20,10 +70,12 @@ local function load_file(file)
     buffers[n].lines[1] = ""
     return
   end
-  handle:close()
-  for line in io.lines(file) do
+  for line in handle:lines() do
     buffers[n].lines[#buffers[n].lines + 1] = (line:gsub("\n", ""))
   end
+  handle:close()
+  buffers[n].cline = math.min(#buffers[n].lines,
+    get_last_pos(get_abs_path(file)))
   if commands and commands.t then commands.t() end
 end
 
@@ -31,7 +83,9 @@ if args[1] == "--help" then
   print("usage: tle [FILE]")
   os.exit()
 elseif args[1] then
-  load_file(args[1])
+  for i=1, #args, 1 do
+    load_file(args[i])
+  end
 else
   buffers[1] = {name="<new>", cline = 1, cpos = 0, scroll = 0, lines = {""}, cache = {}}
 end
@@ -165,23 +219,27 @@ local function trim_cpos()
   end
 end
 
+
 local function try_get_highlighter()
   local ext = buffers[cbuf].name:match("%.(.-)$")
   if not ext then
     return
   end
-  local try = "/usr/share/TLE/"..ext..".lua"
-  local also_try = os.getenv("HOME").."/.local/share/TLE/"..ext..".lua"
-  local ok, ret = pcall(dofile, also_try)
+  local try = "/usr/share/VLE/"..ext..".vle"
+  local also_try = os.getenv("HOME").."/.local/share/VLE/"..ext..".vle"
+  local ok, ret = pcall(syntax.load, also_try)
   if ok then
-    print("OK", also_try)
     return ret
   else
-    io.stderr:write(ret)
-    ok, ret = pcall(dofile, try)
+    ok, ret = pcall(syntax.load, try)
     if ok then
-      print("OK", try)
       return ret
+    else
+      ok, ret = pcall(syntax.load, "syntax/"..ext..".vle")
+      if ok then
+        io.stderr:write("OKAY")
+        return ret
+      end
     end
   end
   return nil
