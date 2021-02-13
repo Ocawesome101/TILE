@@ -229,7 +229,6 @@ local function trim_cpos()
   end
 end
 
-
 local function try_get_highlighter()
   local ext = buffers[cbuf].name:match("%.(.-)$")
   if not ext then
@@ -339,6 +338,7 @@ local function prompt(text)
   return inbuf
 end
 
+local prev_search
 commands = {
   b = function()
     if cbuf < #buffers then
@@ -354,11 +354,18 @@ commands = {
   end,
   f = function()
     local search_pattern = prompt("Search pattern:")
-    -- TODO: implement successive searching
+    if #search_pattern == 0 then search_pattern = prev_search end
+    prev_search = search_pattern
+    for i = buffers[cbuf].cline + 1, #buffers[cbuf].lines, 1 do
+      if buffers[cbuf].lines[i]:match(search_pattern) then
+        commands.g(i)
+        return
+      end
+    end
     for i = 1, #buffers[cbuf].lines, 1 do
       if buffers[cbuf].lines[i]:match(search_pattern) then
         commands.g(i)
-        break
+        return
       end
     end
   end,
@@ -467,7 +474,10 @@ commands = {
   end
 }
 
-commands.t()
+for i=1, #buffers, 1 do
+  cbuf = i
+  buffers[cbuf].highlighter = try_get_highlighter()
+end
 io.write("\27[2J")
 if os.getenv("TERM") == "paragon" then
   io.write("\27(R\27(l")
