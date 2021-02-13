@@ -393,6 +393,7 @@ local function load_file(file)
   handle:close()
   buffers[n].cline = math.min(#buffers[n].lines,
     get_last_pos(get_abs_path(file)))
+  buffers[n].scroll = buffers[n].cline - h
   if commands and commands.t then commands.t() end
 end
 
@@ -419,14 +420,17 @@ end
 local function draw_open_buffers()
   vt.set_cursor(1, 1)
   local draw = "\27[2K\27[46m"
+  local dr = ""
   for i=1, #buffers, 1 do
+    dr = dr .. truncate_name(buffers[i].name, i) .. "   "
     draw = draw .. "\27[36m \27["..(i == cbuf and "107" or "46")..";30m " .. truncate_name(buffers[i].name, i) .. " \27[46m"
   end
-  draw = draw .. "\27[K\27[39;49m"
-  if #draw:gsub("\27%[.+m", "") > w then
+  local diff = string.rep(" ", w - #dr)
+  draw = draw .. "\27[46m" .. diff .. "\27[39;49m"
+  if #dr:gsub("\27%[[%d.]+m", "") > w then
     draw = draw:sub(1, w)
   end
-  io.write(draw)--, "\n\27[G\27[2K\27[36m", string.rep("-", w))
+  io.write(draw, "\27[39;49m")--, "\n\27[G\27[2K\27[36m", string.rep("-", w))
 end
 
 local function draw_line(line_num, line_text)
@@ -729,6 +733,7 @@ commands = {
       ok:write(buffers[cbuf].lines[i], "\n")
     end
     ok:close()
+    save_last_pos(buffers[cbuf].name, buffers[cbuf].cline)
     buffers[cbuf].unsaved = false
   end,
   w = function()
