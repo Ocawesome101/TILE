@@ -64,19 +64,20 @@ local commands -- forward declaration so commands and load_file can access this
 local function load_file(file)
   local n = #buffers + 1
   buffers[n] = {name=file, cline = 1, cpos = 0, scroll = 1, lines = {}, cache = {}}
-  local handle = io.open(file)
+  local handle = io.open(file, "r")
   cbuf = n
   if not handle then
     buffers[n].lines[1] = ""
     return
   end
   for line in handle:lines() do
-    buffers[n].lines[#buffers[n].lines + 1] = (line:gsub("\n", ""))
+    buffers[n].lines[#buffers[n].lines + 1] =
+                                     (line:gsub("[\r\n]", ""):gsub("\t", "  "))
   end
   handle:close()
   buffers[n].cline = math.min(#buffers[n].lines,
     get_last_pos(get_abs_path(file)))
-  buffers[n].scroll = buffers[n].cline - h
+  buffers[n].scroll = math.min(1, buffers[n].cline - h)
   if commands and commands.t then commands.t() end
 end
 
@@ -323,13 +324,15 @@ local function prompt(text)
                                                           (box_w - 2) - #inbuf))
     vt.set_cursor(box_x, box_y + 2)
     io.write("\27[46m", string.rep(" ", box_w))
+    vt.set_cursor(box_x + 1 + math.min(box_w - 2, #inbuf), box_y + 1)
   end
   repeat
     redraw()
     local c, f = kbd.get_key()
-    if c == "backspace" then
+    f = f or {}
+    if c == "backspace" or (f.ctrl and c == "h") then
       inbuf = inbuf:sub(1, -2)
-    elseif not f then
+    elseif not (f.ctrl or f.alt) then
       inbuf = inbuf .. c
     end
   until (c == "m" and (f or {}).ctrl)
