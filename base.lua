@@ -88,7 +88,7 @@ elseif args[1] then
     load_file(args[i])
   end
 else
-  buffers[1] = {name="<new>", cline = 1, cpos = 0, scroll = 0, lines = {""}, cache = {}}
+  buffers[1] = {name="<new>", cline = 1, cpos = 0, scroll = 1, lines = {""}, cache = {}}
 end
 
 local function truncate_name(n, bn)
