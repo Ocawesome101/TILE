@@ -844,7 +844,7 @@ for i=1, #buffers, 1 do
 end
 io.write("\27[2J")
 if os.getenv("TERM") == "paragon" then
-  io.write("\27(R\27(l")
+  io.write("\27(R\27(l\27[8m")
 else
   os.execute("stty raw -echo")
 end
