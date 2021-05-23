@@ -263,7 +263,8 @@ arrows = {
       buf.cline = buf.cline - 1
       if buf.cline < buf.scroll and buf.scroll > 0 then
         buf.scroll = buf.scroll - 1
-        buf.cache = {}
+        io.write("\27[T") -- scroll up
+        buf.cache[buf.cline] = nil
       end
       buf.cpos = #buf.lines[buf.cline] - dfe
     end
@@ -276,7 +277,8 @@ arrows = {
       buf.cline = buf.cline + 1
       if buf.cline > buf.scroll + h - 3 then
         buf.scroll = buf.scroll + 1
-        buf.cache = {}
+        io.write("\27[S") -- scroll down, with some VT100 magic for efficiency
+        buf.cache[buf.cline] = nil
       end
       buf.cpos = #buf.lines[buf.cline] - dfe
     end
@@ -470,6 +472,8 @@ commands = {
     io.write("\27[2J\27[1;1H\27[m")
     if os.getenv("TERM") == "paragon" then
       io.write("\27(r\27(L")
+    elseif os.getenv("TERM") == "cynosure" then
+      io.write("\27?13;2c")
     else
       os.execute("stty sane")
     end
@@ -484,6 +488,8 @@ end
 io.write("\27[2J")
 if os.getenv("TERM") == "paragon" then
   io.write("\27(R\27(l\27[8m")
+elseif os.getenv("TERM") == "cynosure" then
+  io.write("\27?3;12c\27[8m")
 else
   os.execute("stty raw -echo")
 end
