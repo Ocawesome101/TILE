@@ -2,13 +2,13 @@
 
 Usage: `tle [file]`
 
-Somewhat similar to `nano`, but written in Lua and with different commands.  Will attempt to load syntax highlighting for the current file extension from `TLE/$EXTENSION.vle` in two places (see below).
+Somewhat similar to `nano`, but written in Lua and with different commands.  Will attempt to load syntax highlighting for the current file extension from `VLE/fext.vle` in two places (see below).
 
 Use arrow keys to navigate.
 
 Run `standalone.sh` to generate a standalone TLE script.  Copy (or `ln -s`) `syntax` to `$HOME/.local/share/VLE` or `/usr/share/VLE` to get syntax highlighting support.
 
-*Update Feb 11 2021:  TLE now uses an identical syntax highlighting scheme to VLE, as well as the same file position caching scheme.  This means that if VLE is already installed, syntax highlighting should Just Work(TM).*
+*Update Feb 11 2021:  TLE now uses an identical syntax highlighting scheme to VLE, as well as the same file position caching scheme.  This means that if VLE is already installed, syntax highlighting should just work.*
 
 Commands:
 
