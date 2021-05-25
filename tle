@@ -1,5 +1,5 @@
 #!/usr/bin/env lua
--- TLE - The Lua Editor --
+-- TLE - The Lua Editor.  Licensed under the DSLv2. --
 
 -- basic terminal interface library --
 
