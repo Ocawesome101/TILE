@@ -14,7 +14,8 @@ end
 
 local function wf(f, d)
   local handle = assert(io.open(f, "w"))
-  handle:write(d):close()
+  handle:write(d)
+  handle:close()
 end
 
 wf("tle", rf("base.lua", 3) .. rf("lib/iface.lua", 27) .. rf("lib/kbd.lua", 62)
