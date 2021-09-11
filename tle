@@ -439,9 +439,9 @@ local function load_file(file)
                                      (line:gsub("[\r\n]", ""):gsub("\t", "  "))
   end
   handle:close()
-  buffers[n].cline = math.min(#buffers[n].lines,
+  --[[buffers[n].cline = math.min(#buffers[n].lines,
     get_last_pos(get_abs_path(file)))
-  buffers[n].scroll = math.min(1, buffers[n].cline - h)
+  buffers[n].scroll = math.min(1, buffers[n].cline - h)]]
   if commands and commands.t then commands.t() end
 end
 
