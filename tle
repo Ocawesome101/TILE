@@ -427,7 +427,7 @@ end
 local commands -- forward declaration so commands and load_file can access this
 local function load_file(file)
   local n = #buffers + 1
-  buffers[n] = {name=file, cline = 1, cpos = 0, scroll = 1, lines = {}, cache = {}}
+  buffers[n] = {name=file, cline = 1, cpos = 0, scroll = 0, lines = {}, cache = {}}
   local handle = io.open(file, "r")
   cbuf = n
   if not handle then
